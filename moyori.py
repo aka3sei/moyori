@@ -1,11 +1,10 @@
 import streamlit as st
-import requests
-import pandas as pd
+import urllib.parse
 
 # ページ設定
-st.set_page_config(page_title="最寄り駅検索ツール", layout="centered")
+st.set_page_config(page_title="最寄り駅・周辺検索", layout="centered")
 
-# ヘッダー非表示・余白調整
+# ヘッダー非表示
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -13,61 +12,38 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚉 最寄り駅検索")
-st.caption("全国の住所から周辺駅と徒歩分数を即座に算出します")
+st.title("🚉 最寄り駅・周辺検索")
+st.caption("Googleの最新データベースを使用して周辺駅を表示します")
 
 # 1. 住所入力
-address = st.text_input("住所や地名を入力（例：新宿三丁目、三鷹市上連雀）", key="addr_input")
+address = st.text_input("住所や地名を入力してください", placeholder="例：新宿三丁目、三鷹市上連雀1")
 
 if address:
-    try:
-        # 2. 座標取得（国土地理院API：比較的安定しており、制限も緩い）
-        geo_url = f"https://msearch.gsi.go.jp/address-search/AddressSearch?q={address}"
-        geo_res = requests.get(geo_url, timeout=5)
-        geo_data = geo_res.json()
+    # Googleマップで「住所名 駅」で検索するURLを作成
+    search_query = f"{address} 駅"
+    encoded_query = urllib.parse.quote(search_query)
+    
+    # Googleマップの検索結果を埋め込むURL
+    # ※Google公式の検索表示機能を利用
+    map_url = f"https://www.google.com/maps?q={encoded_query}&output=embed"
+    
+    st.subheader(f"📍 {address} 周辺の駅情報")
+    
+    # 2. Googleマップ（駅検索結果）を直接表示
+    # これならAPI制限に関係なく、100%表示されます
+    st.components.v1.iframe(map_url, width=None, height=500, scrolling=True)
+    
+    st.success("上の地図内で、最寄り駅と徒歩ルートを確認できます。")
+    
+    # 3. 補足：ワンクリックでナビを開くボタン
+    st.divider()
+    col1, col2 = st.columns(2)
+    with col1:
+        google_link = f"https://www.google.com/maps/search/{encoded_query}"
+        st.link_button("🌐 Googleマップアプリで開く", google_link, use_container_width=True)
+    with col2:
+        # リフォームアプリなど他のアプリへのリンク（必要に応じて）
+        st.button("📋 検索履歴に保存（機能準備中）", use_container_width=True)
 
-        if geo_data:
-            # 座標を抽出
-            lon, lat = geo_data[0]['geometry']['coordinates']
-            
-            # 3. 駅検索（HeartRails API）
-            station_url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
-            station_res = requests.get(station_url, timeout=5)
-            station_data = station_res.json()
-            
-            stations = station_data.get('response', {}).get('station', [])
-            
-            if stations:
-                st.subheader(f"📍 {address} 付近の駅")
-                
-                # 表示用リスト作成
-                results = []
-                for s in stations:
-                    dist_m = int(s.get('distance', 0))
-                    # 徒歩分数の計算（不動産基準：80m＝1分）
-                    walk_min = -(-dist_m // 80)
-                    
-                    results.append({
-                        "路線": s.get('line', '-'),
-                        "駅名": s.get('name', '-'),
-                        "距離": f"{dist_m}m",
-                        "徒歩": f"約{walk_min}分"
-                    })
-                
-                # 重複を排除し、距離順に上位を表示
-                df = pd.DataFrame(results).drop_duplicates(subset=['駅名']).head(5)
-                st.table(df)
-                
-                # 位置確認マップ
-                st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
-            else:
-                st.warning("周辺に駅が見つかりませんでした。番地まで入力してみてください。")
-        else:
-            st.error("住所の場所を特定できませんでした。")
-
-    except Exception:
-        # エラーが発生しても、赤い警告ではなく、実務を妨げない優しい案内を表示
-        st.info("💡 検索エンジンの応答待ちです。再度「Enter」を押すか、住所を少し詳しく入力してみてください。")
-
-st.divider()
-st.caption("※本データは直線距離に基づく概算です。正確な経路は地図アプリ等でご確認ください。")
+else:
+    st.info("住所を入力してEnterを押すと、周辺の駅が地図上に一覧表示されます。")
