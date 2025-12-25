@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # ページ設定
-st.set_page_config(page_title="プロ仕様：最寄り駅検索", layout="centered")
+st.set_page_config(page_title="最寄り駅検索", layout="centered")
 
 st.markdown("""
     <style>
@@ -11,8 +11,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚉 確実版：最寄り駅検索")
-st.caption("Googleのデータベースを使用して全国の駅を検索します")
+st.title("🚉 最寄り駅検索")
 
 # 1. 住所入力
 query = st.text_input("住所または地名を入力してください", placeholder="例：新宿三丁目、三鷹市上連雀1丁目")
@@ -56,3 +55,4 @@ if query:
         st.markdown(f"[👉 Googleマップで詳しく見る](https://www.google.com/maps/search/{query}+駅)")
     else:
         st.warning("駅が見つかりませんでした。")
+
