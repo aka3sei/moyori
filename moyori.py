@@ -2,48 +2,55 @@ import streamlit as st
 import urllib.parse
 
 # ページ設定
-st.set_page_config(page_title="最寄り駅・周辺検索", layout="centered")
+st.set_page_config(page_title="最寄り駅・周辺検索", layout="wide")
 
-# ヘッダー非表示
+# デザイン調整
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
-    .block-container { padding-top: 2rem; }
+    .block-container { padding-top: 1rem; }
+    /* 地図の角を丸くする */
+    iframe { border-radius: 10px; border: 1px solid #ddd; }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🚉 最寄り駅・周辺検索")
-st.caption("Googleの最新データベースを使用して周辺駅を表示します")
+st.caption("Googleマップと連携し、全国の駅名と経路を確実に表示します")
 
 # 1. 住所入力
-address = st.text_input("住所や地名を入力してください", placeholder="例：新宿三丁目、三鷹市上連雀1")
+address = st.text_input("住所や地名を入力してください（例：三鷹市上連雀1丁目、新宿三丁目）", placeholder="ここに入力してEnter")
 
 if address:
-    # Googleマップで「住所名 駅」で検索するURLを作成
+    # Google検索用のクエリ作成
     search_query = f"{address} 駅"
     encoded_query = urllib.parse.quote(search_query)
     
-    # Googleマップの検索結果を埋め込むURL
-    # ※Google公式の検索表示機能を利用
-    map_url = f"https://www.google.com/maps?q={encoded_query}&output=embed"
-    
-    st.subheader(f"📍 {address} 周辺の駅情報")
-    
-    # 2. Googleマップ（駅検索結果）を直接表示
-    # これならAPI制限に関係なく、100%表示されます
-    st.components.v1.iframe(map_url, width=None, height=500, scrolling=True)
-    
-    st.success("上の地図内で、最寄り駅と徒歩ルートを確認できます。")
-    
-    # 3. 補足：ワンクリックでナビを開くボタン
-    st.divider()
-    col1, col2 = st.columns(2)
-    with col1:
+    # 2カラムレイアウトで「リスト」と「地図」を並べる
+    col_left, col_right = st.columns([1, 2])
+
+    with col_left:
+        st.subheader("📋 周辺駅の確認")
+        st.write(f"「{address}」周辺には以下の駅があります。詳細は地図内のピンをタップしてください。")
+        
+        # 簡易的な案内（Googleマップへの誘導）
+        st.info("💡 地図上の「駅アイコン」をクリックすると、駅名と路線名、ここからの徒歩ルートが詳しく表示されます。")
+        
+        # 外部リンクボタン
         google_link = f"https://www.google.com/maps/search/{encoded_query}"
-        st.link_button("🌐 Googleマップアプリで開く", google_link, use_container_width=True)
-    with col2:
-        # リフォームアプリなど他のアプリへのリンク（必要に応じて）
-        st.button("📋 検索履歴に保存（機能準備中）", use_container_width=True)
+        st.link_button("🌐 大きな地図で確認（Googleマップ）", google_link, use_container_width=True)
+        
+        # おまけ：不動産用メモ
+        st.text_area("物件メモ", placeholder="例：三鷹駅 徒歩12分、駐輪場あり", height=150)
+
+    with col_right:
+        st.subheader(f"📍 周辺マップ")
+        # Googleマップの埋め込み（output=embed を使用）
+        # z=15 はズームレベル（15〜16が駅周辺を見るのに最適）
+        map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja"
+        
+        st.components.v1.iframe(map_url, height=550, scrolling=True)
+
+    st.success("検索が完了しました。地図を動かして周辺環境（コンビニ・スーパー等）も確認できます。")
 
 else:
-    st.info("住所を入力してEnterを押すと、周辺の駅が地図上に一覧表示されます。")
+    st.info("住所を入力してEnterを押すと、駅名と地図が表示されます。")
