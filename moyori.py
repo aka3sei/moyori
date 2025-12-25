@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 import pandas as pd
+import time
 
 st.set_page_config(page_title="最寄り駅検索ツール", layout="centered")
 
-# スタイル調整
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -13,25 +13,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🚉 最寄り駅検索")
-st.caption("住所から周辺の駅（3km圏内）をリストアップします")
+st.caption("高精度エンジンで周辺駅を特定します")
 
 address = st.text_input("住所を入力してください", placeholder="例：三鷹市上連雀1丁目")
 
 if address:
-    # 1. 住所から緯度経度を取得
-    geo_url = f"https://msearch.gsi.go.jp/address-search/AddressSearch?q={address}"
+    # 1. 住所を緯度経度に変換 (OSM Nominatim API を使用して精度を向上)
+    # ユーザーエージェントを設定しないとエラーになるため設定
+    headers = {'User-Agent': 'MyRealEstateApp/1.0'}
+    geo_url = f"https://nominatim.openstreetmap.org/search?q={address}&format=json&limit=1"
     
     try:
-        geo_res = requests.get(geo_url, timeout=10).json()
+        geo_res = requests.get(geo_url, headers=headers, timeout=10).json()
         
         if geo_res:
-            # 最初の候補を採用
-            lon, lat = geo_res[0]['geometry']['coordinates']
+            lat = float(geo_res[0]['lat'])
+            lon = float(geo_res[0]['lon'])
             
-            # 2. 周辺の駅を取得（メソッドを getStations から getLines に変更して範囲をカバー）
-            # または、より広範囲を検索する「都道府県・市区町村」指定を組み合わせて検索
-            # 今回は getStations のまま、複数の候補を確実に拾うロジックに強化
-            
+            # 2. 最寄り駅を取得 (HeartRails Express API)
             station_url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
             station_res = requests.get(station_url, timeout=10).json()
             
@@ -44,8 +43,7 @@ if address:
                 for s in stations:
                     try:
                         dist_m = int(s.get('distance', 0))
-                        # 徒歩分数の計算 (80m = 1分)
-                        walk_min = -(-dist_m // 80)
+                        walk_min = -(-dist_m // 80) # 80m=1分
                         
                         data.append({
                             "路線": s.get('line', '-'),
@@ -53,21 +51,19 @@ if address:
                             "距離": f"{dist_m}m",
                             "徒歩": f"約{walk_min}分"
                         })
-                    except:
-                        continue
+                    except: continue
                 
                 if data:
-                    # 重複を排除して表示
-                    df = pd.DataFrame(data).drop_duplicates(subset=['駅名'])
+                    df = pd.DataFrame(data)
                     st.table(df)
+                    # 地図表示
                     st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
                 else:
-                    st.warning("周辺に駅データが見つかりませんでした。")
+                    st.warning("周辺に駅が見つかりませんでした。")
             else:
-                # 【最終手段】APIが反応しない場合、住所の文字列から推測
-                st.warning("詳細な駅情報を取得できませんでした。住所を『三鷹駅』のように具体的に入力して再試行してください。")
+                st.warning("駅データが取得できませんでした。住所を『三鷹市下連雀』などに変えてお試しください。")
         else:
-            st.error("入力された住所の場所を特定できませんでした。")
+            st.error("入力された住所の場所を特定できませんでした。都道府県名から入力してみてください。")
             
     except Exception as e:
-        st.error("システムエラーが発生しました。時間を置いてお試しください。")
+        st.error("現在、検索サーバーが混み合っています。少し待ってから再度「Enter」を押してください。")
