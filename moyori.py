@@ -16,6 +16,15 @@ st.caption("住所から周辺の駅と徒歩分数を表示します")
 
 address = st.text_input("住所を入力してください", placeholder="例：三鷹市上連雀1丁目")
 
+def get_stations(lon, lat):
+    """HeartRails APIから駅を取得する関数"""
+    url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
+    try:
+        res = requests.get(url, timeout=10).json()
+        return res.get('response', {}).get('station', [])
+    except:
+        return []
+
 if address:
     # 1. 住所を緯度経度に変換
     geo_url = f"https://msearch.gsi.go.jp/address-search/AddressSearch?q={address}"
@@ -23,33 +32,31 @@ if address:
     try:
         geo_res = requests.get(geo_url, timeout=10).json()
         
-        lat, lon = None, None
+        target_lon, target_lat = None, None
         if geo_res:
-            # 【重要】複数の候補から座標(geometry)を持っているものを探す
             for candidate in geo_res:
                 if 'geometry' in candidate and 'coordinates' in candidate['geometry']:
-                    lon, lat = candidate['geometry']['coordinates']
-                    break # 座標が見つかったらループを抜ける
+                    target_lon, target_lat = candidate['geometry']['coordinates']
+                    break
         
-        if lat and lon:
-            # 2. 最寄り駅を取得
-            station_url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
-            station_res = requests.get(station_url, timeout=10).json()
+        if target_lat and target_lon:
+            # 2. 最寄り駅を取得（1回目）
+            stations = get_stations(target_lon, target_lat)
             
-            stations = station_res.get('response', {}).get('station', [])
-            
+            # 【重要】もし見つからなかったら、座標を少しずらして再試行（APIの隙間対策）
+            if not stations:
+                stations = get_stations(target_lon + 0.001, target_lat + 0.001)
+
             if stations:
                 st.subheader(f"📍 {address} 付近の駅")
                 
                 data = []
                 for s in stations:
                     try:
-                        dist_val = s.get('distance')
-                        if dist_val is None: continue
+                        dist_m = int(s.get('distance', 0))
+                        if dist_m == 0: continue
                         
-                        dist_m = int(dist_val)
                         walk_min = -(-dist_m // 80)
-                        
                         data.append({
                             "路線": s.get('line', '-'),
                             "駅名": s.get('name', '-'),
@@ -60,13 +67,13 @@ if address:
                 
                 if data:
                     st.table(pd.DataFrame(data))
-                    st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
+                    st.map(pd.DataFrame({'lat': [target_lat], 'lon': [target_lon]}))
                 else:
-                    st.warning("周辺に駅が見つかりませんでした。")
+                    st.warning("周辺に有効な駅データが見つかりませんでした。")
             else:
-                st.warning("駅情報の取得に失敗しました。時間をおいて試してください。")
+                st.warning("駅情報が取得できませんでした。住所を「三鷹駅」のように変えて試してみてください。")
         else:
-            st.error("入力された住所の場所を特定できませんでした。もう少し詳しい住所を入力してください。")
+            st.error("入力された住所の場所を特定できませんでした。")
             
     except Exception as e:
-        st.error(f"システムエラー: {e}")
+        st.error(f"システムエラーが発生しました。")
