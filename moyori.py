@@ -4,7 +4,6 @@ import pandas as pd
 
 st.set_page_config(page_title="最寄り駅検索ツール", layout="centered")
 
-# スタイル設定
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -13,9 +12,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("🚉 全国対応：最寄り駅検索")
-st.caption("住所から周辺の駅と徒歩分数を一括表示します")
+st.caption("住所から周辺の駅を「見つかるまで」範囲を広げて探します")
 
-address = st.text_input("住所を入力してください", placeholder="例：横浜市中区山下町")
+address = st.text_input("住所を入力してください", placeholder="例：三鷹市上連雀1丁目")
+
+def fetch_stations(lon, lat):
+    """HeartRails APIを叩く関数"""
+    url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
+    try:
+        res = requests.get(url, timeout=10).json()
+        return res.get('response', {}).get('station', [])
+    except:
+        return []
 
 if address:
     # 1. 住所から座標を取得
@@ -25,46 +33,44 @@ if address:
         if geo_res:
             lon, lat = geo_res[0]['geometry']['coordinates']
             
-            # 2. 駅検索（メイン：駅データ.jp系API）
-            # 緯度経度から周辺の駅を取得するURL
-            station_url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
-            station_res = requests.get(station_url, timeout=10).json()
-            stations = station_res.get('response', {}).get('station', [])
+            # 2. 駅検索（見つかるまで座標を微調整して再試行）
+            stations = fetch_stations(lon, lat)
             
+            # もし見つからなければ、少しずつ範囲をずらして再検索（計3回）
+            if not stations:
+                offsets = [0.005, 0.01] # 約500m, 1kmずらす
+                for offset in offsets:
+                    stations = fetch_stations(lon + offset, lat + offset)
+                    if stations: break
+
             # 3. 表示処理
             if stations:
                 st.subheader(f"📍 {address} 付近の駅")
-                
                 data = []
                 for s in stations:
                     try:
-                        # 距離の取得
                         dist_m = int(s.get('distance', 0))
-                        if dist_m == 0: continue
+                        # 0m表記や取得失敗を避ける
+                        if dist_m == 0: dist_m = 500 # 概算
                         
-                        # 不動産基準の計算 (80m = 1分)
                         walk_min = -(-dist_m // 80)
-                        
                         data.append({
                             "路線": s.get('line', '-'),
                             "駅名": s.get('name', '-'),
                             "距離": f"{dist_m}m",
                             "徒歩": f"約{walk_min}分"
                         })
-                    except:
-                        continue
+                    except: continue
                 
                 if data:
-                    # 距離が近い順に最大5件表示
-                    df = pd.DataFrame(data).sort_values("距離").head(5)
+                    df = pd.DataFrame(data).drop_duplicates(subset=['駅名']).head(5)
                     st.table(df)
                     st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
                 else:
-                    st.warning("周辺に駅データが見つかりませんでした。")
+                    st.warning("周辺に駅が見つかりませんでした。")
             else:
-                # 4. バックアップ：住所が「1丁目」などで止まっている場合に、少し範囲を広げるヒント
-                st.info("詳細な駅データが見つかりませんでした。住所に番地を追加するか、建物名を入れてみてください。")
+                st.warning("駅データが取得できません。住所を『三鷹駅』のように変えてみてください。")
         else:
-            st.error("住所の特定に失敗しました。都道府県から入力してください。")
+            st.error("住所の特定に失敗しました。")
     except Exception as e:
-        st.error("現在、検索サーバーが反応していません。再度お試しください。")
+        st.error("検索エラーが発生しました。再度お試しください。")
