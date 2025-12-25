@@ -1,10 +1,10 @@
 import streamlit as st
 import requests
 import pandas as pd
-import time
 
 st.set_page_config(page_title="最寄り駅検索ツール", layout="centered")
 
+# スタイル設定
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
@@ -12,38 +12,38 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚉 最寄り駅検索")
-st.caption("高精度エンジンで周辺駅を特定します")
+st.title("🚉 全国対応：最寄り駅検索")
+st.caption("住所から周辺の駅と徒歩分数を一括表示します")
 
-address = st.text_input("住所を入力してください", placeholder="例：三鷹市上連雀1丁目")
+address = st.text_input("住所を入力してください", placeholder="例：横浜市中区山下町")
 
 if address:
-    # 1. 住所を緯度経度に変換 (OSM Nominatim API を使用して精度を向上)
-    # ユーザーエージェントを設定しないとエラーになるため設定
-    headers = {'User-Agent': 'MyRealEstateApp/1.0'}
-    geo_url = f"https://nominatim.openstreetmap.org/search?q={address}&format=json&limit=1"
-    
+    # 1. 住所から座標を取得
+    geo_url = f"https://msearch.gsi.go.jp/address-search/AddressSearch?q={address}"
     try:
-        geo_res = requests.get(geo_url, headers=headers, timeout=10).json()
-        
+        geo_res = requests.get(geo_url, timeout=10).json()
         if geo_res:
-            lat = float(geo_res[0]['lat'])
-            lon = float(geo_res[0]['lon'])
+            lon, lat = geo_res[0]['geometry']['coordinates']
             
-            # 2. 最寄り駅を取得 (HeartRails Express API)
+            # 2. 駅検索（メイン：駅データ.jp系API）
+            # 緯度経度から周辺の駅を取得するURL
             station_url = f"https://express.heartrails.com/api/json?method=getStations&x={lon}&y={lat}"
             station_res = requests.get(station_url, timeout=10).json()
-            
             stations = station_res.get('response', {}).get('station', [])
             
+            # 3. 表示処理
             if stations:
                 st.subheader(f"📍 {address} 付近の駅")
                 
                 data = []
                 for s in stations:
                     try:
+                        # 距離の取得
                         dist_m = int(s.get('distance', 0))
-                        walk_min = -(-dist_m // 80) # 80m=1分
+                        if dist_m == 0: continue
+                        
+                        # 不動産基準の計算 (80m = 1分)
+                        walk_min = -(-dist_m // 80)
                         
                         data.append({
                             "路線": s.get('line', '-'),
@@ -51,19 +51,20 @@ if address:
                             "距離": f"{dist_m}m",
                             "徒歩": f"約{walk_min}分"
                         })
-                    except: continue
+                    except:
+                        continue
                 
                 if data:
-                    df = pd.DataFrame(data)
+                    # 距離が近い順に最大5件表示
+                    df = pd.DataFrame(data).sort_values("距離").head(5)
                     st.table(df)
-                    # 地図表示
                     st.map(pd.DataFrame({'lat': [lat], 'lon': [lon]}))
                 else:
-                    st.warning("周辺に駅が見つかりませんでした。")
+                    st.warning("周辺に駅データが見つかりませんでした。")
             else:
-                st.warning("駅データが取得できませんでした。住所を『三鷹市下連雀』などに変えてお試しください。")
+                # 4. バックアップ：住所が「1丁目」などで止まっている場合に、少し範囲を広げるヒント
+                st.info("詳細な駅データが見つかりませんでした。住所に番地を追加するか、建物名を入れてみてください。")
         else:
-            st.error("入力された住所の場所を特定できませんでした。都道府県名から入力してみてください。")
-            
+            st.error("住所の特定に失敗しました。都道府県から入力してください。")
     except Exception as e:
-        st.error("現在、検索サーバーが混み合っています。少し待ってから再度「Enter」を押してください。")
+        st.error("現在、検索サーバーが反応していません。再度お試しください。")
