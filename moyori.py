@@ -19,41 +19,42 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🚉 最寄り駅・周辺検索")
+st.title("🚉 最寄り駅検索")
 
 # ① 住所入力欄
-address = st.text_input("住所や地名を入力してください", placeholder="例：西新宿１丁目、西新宿1-26-2")
+address = st.text_input("住所や地名を入力してください", placeholder="例：西新宿1-26-2")
 
 # ② 説明テキスト
-st.info("入力された住所の周辺にある駅を表示します。")
+st.info("入力された場所から「一番近い駅」を1つ特定して表示します。")
 
 st.write("---")
 
 # ③ 現在地検索ボタン
 current_query = urllib.parse.quote("現在地 最寄り駅")
-st.link_button("📍 現在地を特定してアプリで開く", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
+st.link_button("📍 現在地から最短の駅を探す（アプリ）", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
 
 # 4. 表示処理
 if address:
-    # 【駅の表示を確実に復活させる】
-    # 複雑な除外キーワードを捨て、Googleが確実に「駅」を表示するキーワードに絞ります
-    search_query = f"{address} station" 
+    # 【最短の1駅に絞る工夫】
+    # 「nearest station」という英語キーワードを混ぜることで、
+    # Googleが「複数候補」ではなく「最も近い1地点」を特定する確率が高まります。
+    search_query = f"{address} nearest station" 
     encoded_query = urllib.parse.quote(search_query)
     
     # 埋め込みURL
-    # t=m (通常地図), q= (検索クエリ) を使い、交通機関を優先します
-    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja"
+    # iwloc=A を指定し、最も関連度の高い（一番近い）場所の情報を強制的に開きます
+    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=16&hl=ja&iwloc=A"
     
-    st.subheader(f"📍 {address} 周辺の駅")
+    st.subheader(f"🚩 最寄りの駅: {address} 付近")
     
     # Googleマップを表示
     st.components.v1.iframe(map_url, width=None, height=550, scrolling=True)
     
-    st.success("赤いピンまたは駅アイコンが最寄り駅です。")
+    st.success("赤いピンが、入力地点から最も近いと思われる駅です。")
     
     # アプリ連携
     google_link = f"https://www.google.com/maps/search/{encoded_query}"
-    st.link_button("🚀 Googleマップアプリで「駅」を詳しく見る", google_link, use_container_width=True)
+    st.link_button("🚀 この駅へのルートをアプリで確認", google_link, use_container_width=True)
 
 else:
     st.write("※現在は住所の入力待ちです。")
