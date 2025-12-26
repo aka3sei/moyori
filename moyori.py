@@ -19,9 +19,13 @@ st.title("🚉 最寄り駅・周辺検索")
 # 2. 住所入力
 address = st.text_input("住所や地名を入力してください", placeholder="例：新宿三丁目、三鷹市上連雀1")
 
+# 【移動】入力欄のすぐ下に説明テキストを表示
+if not address:
+    st.info("住所を入力してEnterを押すと、周辺の駅が地図上に表示されます。")
+
 st.write("---")
 
-# 3. 現在地検索ボタン（中央に配置）
+# 3. 現在地検索ボタン
 current_query = urllib.parse.quote("現在地 最寄り駅")
 st.link_button("📍 現在地で検索", f"https://www.google.com/maps/search/?api=1&query={current_query}", use_container_width=True)
 
@@ -44,6 +48,3 @@ if address:
     # アプリで開くボタン
     google_link = f"https://www.google.com/maps/search/?api=1&query={encoded_query}"
     st.link_button("🌐 Googleマップアプリで詳細を見る", google_link, use_container_width=True)
-
-else:
-    st.info("住所を入力してEnterを押すと、周辺の駅が地図上に表示されます。")
