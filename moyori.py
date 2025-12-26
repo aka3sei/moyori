@@ -35,11 +35,15 @@ st.link_button("📍 現在地を特定してアプリで開く", f"https://www.
 
 # 4. 表示処理
 if address:
-    # 鉄道駅を優先し、デパートや百貨店を検索結果から除外するクエリ
-    search_query = f"{address} 鉄道駅 -デパート -百貨店"
+    # 【除外設定の強化】
+    # 「鉄道駅」を必須とし、飲食店やホテル、商業施設を徹底的にマイナス検索で除外します。
+    # これにより、地図上のノイズが大幅に減少します。
+    exclude_keywords = "-飲食店 -レストラン -カフェ -ホテル -宿泊 -デパート -百貨店 -店舗"
+    search_query = f"{address} 鉄道駅 {exclude_keywords}"
     encoded_query = urllib.parse.quote(search_query)
     
-    # 埋め込みURL（駅が目立つ設定）
+    # 埋め込みURL
+    # z=15（ほどよく周辺が見える倍率）
     map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja&iwloc=A"
     
     st.subheader(f"📍 {address} 周辺の駅")
@@ -47,7 +51,7 @@ if address:
     # Googleマップを表示
     st.components.v1.iframe(map_url, width=None, height=550, scrolling=True)
     
-    st.success("デパート等を除外し、駅を優先して表示しています。")
+    st.success("ホテル・飲食店・デパート等を除外し、駅を優先して表示しています。")
     
     # アプリ連携
     google_link = f"https://www.google.com/maps/search/{encoded_query}"
