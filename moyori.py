@@ -1,5 +1,3 @@
-
-
 import streamlit as st
 import urllib.parse
 
@@ -57,3 +55,4 @@ if address:
 
 else:
     st.write("※現在は住所の入力待ちです。")
+
