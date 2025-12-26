@@ -42,11 +42,11 @@ if address:
         google_link = f"https://www.google.com/maps/search/{encoded_query}"
         st.link_button("🌐 Googleマップアプリで開く", google_link, use_container_width=True)
     with col2:
-        st.button("📋 検索履歴に保存（準備中）", use_container_width=True)
-
+       
 else:
     st.info("住所を入力してEnterを押すと、周辺の駅が地図上に表示されます。")
     
     # 初期状態では「現在地」で検索するボタンをシンプルに配置
     current_query = urllib.parse.quote("現在地 最寄り駅")
     st.link_button("📍 今いる場所で検索（アプリ起動）", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
+
