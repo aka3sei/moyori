@@ -34,12 +34,15 @@ current_query = urllib.parse.quote("現在地 最寄り駅")
 st.link_button("📍 現在地を特定してアプリで開く", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
 
 # 4. 表示処理
+4. 表示処理（この部分の search_query を書き換えます）
 if address:
-    # 【最重要】飲食店を排除し、鉄道駅（駅）のみにピンを立てるための特殊クエリ
-    # 住所の後に「駅」を付け、さらにカテゴリー指定を意図したキーワードに変更
-    search_query = f"{address} 駅"
+    # 「駅」という言葉の前に「鉄道」を付け、さらにデパートをマイナス検索（-）で除外する指定を試みます
+    # これにより、Googleマップに対して「駅施設」のみを要求します
+    search_query = f"{address} 鉄道駅 -デパート -百貨店"
     encoded_query = urllib.parse.quote(search_query)
     
+    # 埋め込みURL（iwloc=A を維持して、最寄りの駅情報を優先）
+    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=16&hl=ja&iwloc=A"
     # 埋め込みURL（地図の種類を 'm' にし、検索結果を表示）
     # q= に直接住所と駅を入れ、Googleの自動フィルタリング機能を利用します
     map_url = f"https://www.google.com/maps/embed/v1/search?key=YOUR_API_KEY&q={encoded_query}&zoom=15"
@@ -60,3 +63,4 @@ if address:
 
 else:
     st.write("※現在は住所の入力待ちです。")
+
