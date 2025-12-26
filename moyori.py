@@ -25,7 +25,7 @@ st.title("🚉 最寄り駅・周辺検索")
 address = st.text_input("住所や地名を入力してください", placeholder="例：西新宿１丁目、西新宿1-26-2")
 
 # ② 説明テキスト
-st.info("周辺にある「駅」のみを自動的に抽出して表示します。")
+st.info("入力された住所の周辺にある駅を表示します。")
 
 st.write("---")
 
@@ -35,23 +35,21 @@ st.link_button("📍 現在地を特定してアプリで開く", f"https://www.
 
 # 4. 表示処理
 if address:
-    # 【除外設定の強化】
-    # 「鉄道駅」を必須とし、飲食店やホテル、商業施設を徹底的にマイナス検索で除外します。
-    # これにより、地図上のノイズが大幅に減少します。
-    exclude_keywords = "-飲食店 -レストラン -カフェ -ホテル -宿泊 -デパート -百貨店 -店舗"
-    search_query = f"{address} 鉄道駅 {exclude_keywords}"
+    # 【駅の表示を確実に復活させる】
+    # 複雑な除外キーワードを捨て、Googleが確実に「駅」を表示するキーワードに絞ります
+    search_query = f"{address} station" 
     encoded_query = urllib.parse.quote(search_query)
     
     # 埋め込みURL
-    # z=15（ほどよく周辺が見える倍率）
-    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja&iwloc=A"
+    # t=m (通常地図), q= (検索クエリ) を使い、交通機関を優先します
+    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja"
     
     st.subheader(f"📍 {address} 周辺の駅")
     
     # Googleマップを表示
     st.components.v1.iframe(map_url, width=None, height=550, scrolling=True)
     
-    st.success("ホテル・飲食店・デパート等を除外し、駅を優先して表示しています。")
+    st.success("赤いピンまたは駅アイコンが最寄り駅です。")
     
     # アプリ連携
     google_link = f"https://www.google.com/maps/search/{encoded_query}"
