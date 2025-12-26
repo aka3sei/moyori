@@ -34,20 +34,12 @@ current_query = urllib.parse.quote("現在地 最寄り駅")
 st.link_button("📍 現在地を特定してアプリで開く", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
 
 # 4. 表示処理
-4. 表示処理（この部分の search_query を書き換えます）
 if address:
-    # 「駅」という言葉の前に「鉄道」を付け、さらにデパートをマイナス検索（-）で除外する指定を試みます
-    # これにより、Googleマップに対して「駅施設」のみを要求します
+    # 鉄道駅を優先し、デパートや百貨店を検索結果から除外するクエリ
     search_query = f"{address} 鉄道駅 -デパート -百貨店"
     encoded_query = urllib.parse.quote(search_query)
     
-    # 埋め込みURL（iwloc=A を維持して、最寄りの駅情報を優先）
-    map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=16&hl=ja&iwloc=A"
-    # 埋め込みURL（地図の種類を 'm' にし、検索結果を表示）
-    # q= に直接住所と駅を入れ、Googleの自動フィルタリング機能を利用します
-    map_url = f"https://www.google.com/maps/embed/v1/search?key=YOUR_API_KEY&q={encoded_query}&zoom=15"
-    
-    # ※ APIキーを使わない形式で、最も駅が目立つURLに再構築
+    # 埋め込みURL（駅が目立つ設定）
     map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=15&hl=ja&iwloc=A"
     
     st.subheader(f"📍 {address} 周辺の駅")
@@ -55,12 +47,11 @@ if address:
     # Googleマップを表示
     st.components.v1.iframe(map_url, width=None, height=550, scrolling=True)
     
-    st.success("地図上のピンは「駅」を優先して表示しています。")
+    st.success("デパート等を除外し、駅を優先して表示しています。")
     
-    # アプリ連携（確実に駅だけを表示させるリンク）
+    # アプリ連携
     google_link = f"https://www.google.com/maps/search/{encoded_query}"
     st.link_button("🚀 Googleマップアプリで「駅」を詳しく見る", google_link, use_container_width=True)
 
 else:
     st.write("※現在は住所の入力待ちです。")
-
