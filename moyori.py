@@ -4,40 +4,57 @@ import urllib.parse
 # 1. ページ設定
 st.set_page_config(page_title="最寄り駅・周辺検索", layout="centered")
 
-# ヘッダー非表示・余白調整
+# デザイン調整
 st.markdown("""
     <style>
     header[data-testid="stHeader"] { visibility: hidden; }
     .block-container { padding-top: 2rem; }
-    iframe { border-radius: 15px; border: 1px solid #ddd; }
+    iframe { border-radius: 15px; border: 2px solid #1a73e8; }
+    /* 現在地ボタンを強調 */
+    .stLinkButton > a {
+        background-color: #f0f2f6 !important;
+        border: 2px solid #1a73e8 !important;
+        color: #1a73e8 !important;
+        font-weight: bold !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 st.title("🚉 最寄り駅・周辺検索")
 
 # ① 住所入力欄
-address = st.text_input("住所や地名を入力してください", placeholder="例：新宿三丁目、三鷹市上連雀1")
+address = st.text_input("住所や地名を入力してください", placeholder="例：新宿三丁目、三鷹市野崎4-8")
 
-# ② 注意書きテキスト（入力欄のすぐ下）
-st.info("住所を入力してEnterを押すと、周辺の駅が地図上に表示されます。")
+# ② 説明テキスト
+st.info("住所を入力してEnterを押すと、その地点にピンを立てて周辺駅を表示します。")
 
 st.write("---")
 
-# ③ 現在地検索ボタン
+# ③ 現在地検索ボタン（ここを押すと、スマホのGPSで「今いる点」が青く光るマップが開きます）
 current_query = urllib.parse.quote("現在地 最寄り駅")
-st.link_button("📍 現在地で検索", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
+st.link_button("📍 現在地を特定して地図アプリで開く", f"https://www.google.com/maps/search/{current_query}", use_container_width=True)
 
-# 4. 検索結果表示
+# 4. 表示処理
 if address:
-    search_query = f"{address} 最寄り駅"
+    # 【工夫】キーワードに「駅」だけでなく「住所そのもの」を強調させるクエリ構成
+    # これにより、入力した地点に赤いピンが落ちやすくなります
+    search_query = f"{address}"
     encoded_query = urllib.parse.quote(search_query)
-    map_url = f"https://www.google.com/maps/embed/v1/search?key=YOUR_API_KEY_OR_USE_FREE_EMBED&q={encoded_query}&zoom=16"
-    # 互換性の高い埋め込み形式
+    
+    # 埋め込みURL（q=住所 にすることでピンを落とし、周辺の駅も自動で表示される設定）
     map_url = f"https://maps.google.com/maps?q={encoded_query}&output=embed&z=16&hl=ja"
     
-    st.subheader(f"📍 {address} 付近の駅情報")
-    st.components.v1.iframe(map_url, width=None, height=500, scrolling=True)
-    st.success("上の地図内で、最寄り駅を確認できます。")
+    st.subheader(f"🚩 検索地点: {address}")
     
-    google_link = f"https://www.google.com/maps/search/{encoded_query}"
-    st.link_button("🌐 Googleマップアプリで詳細を見る", google_link, use_container_width=True)
+    # Googleマップを表示
+    st.components.v1.iframe(map_url, width=None, height=500, scrolling=True)
+    
+    st.success("赤いピンの場所が入力された住所です。周辺の駅アイコンをクリックすると詳細が見れます。")
+    
+    # アプリ連携ボタン
+    google_link = f"https://www.google.com/maps/search/{encoded_query}+最寄り駅"
+    st.link_button("🚀 Googleマップアプリでルートを確認", google_link, use_container_width=True)
+
+else:
+    # 住所未入力時のプレースホルダー（現在地の目安として三鷹を表示）
+    st.write("※現在は検索待ちの状態です。")
